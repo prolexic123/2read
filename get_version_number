@@ -1,0 +1,5 @@
+#!/bin/bash
+
+ver=`git describe --tags --long | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
+
+echo $ver

@@ -1,0 +1,115 @@
+#!/bin/bash
+
+#
+# Usage examples:
+#
+#	./increase_version_number production
+#	./increase_version_number developmnet
+#	./increase_version_number productiond major
+#
+
+# check arg (should be eiher 'production' or 'development')
+MODE=${1}
+PRODUCTION_MODE="production"
+DEVELOPMENT_MODE="development"
+if [ "${MODE}" != "${PRODUCTION_MODE}" ] && [ "${MODE}" != "${DEVELOPMENT_MODE}" ]; then
+    echo "error: unsupported mode: '${MODE}'. Please use either '${PRODUCTION_MODE}' or '${DEVELOPMENT_MODE}' as the only argument."
+    exit 1
+fi
+
+MAJOR_MINOR=$2
+if [ "${MAJOR_MINOR}" == "" ];
+    MAJOR_MINOR="minor"
+fi
+if [ "${MAJOR_MINOR}" != "minor" ] && [ "${MAJOR_MINOR}" != "${major}" ]; then
+    echo "error: 2nd argument should be 'major' or 'minor' or empty (minor by default)"
+    exit 1
+fi
+
+# chdir to install home directory, so we can safely use relative paths 
+# to subfolder (no matter where this script was called from originally).
+CD_TO_FOLDER=`dirname $0`
+cd ${CD_TO_FOLDER}
+#cd $(dirname $0)
+
+# take full path to the current script base directory
+BASE_DIR=`pwd`
+
+# get current version and parse it
+current_version_number=`./get_version_number`
+v1=`cat ${current_version_number} | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
+v2=`cat ${current_version_number} | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\2/'`
+v3=`cat ${current_version_number} | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\3/'`
+
+if [ "${MAJOR_MINOR}" == "major" ]; then
+    v1=$((v1+1))
+    v2="0"
+    v3="0"
+fi
+
+next_version_number='.b-0'
+
+echo
+echo "Current version: ${current_version_number}"
+echo "Next version will be: ${next_version_number}"
+
+read -p "Are you sure? [y/n]" -n 1
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    exit 1
+fi
+echo
+
+YYYYMMDD_HHMM=`date +"%Y%m%d_%H%M"`					# NEW WAY - just bash
+
+echo $YYYYMMDD_HHMM
+
+exit 0
+
+# commit & push to github all the changes
+COMMIT_MESSAGE="${GIT_TAG} published by user `whoami` on `date`."
+if [ "${COMMIT_COMMENT}" != "" ]; then
+    COMMIT_MESSAGE="${COMMIT_MESSAGE} ${COMMIT_COMMENT}"
+fi
+git commit -m "${COMMIT_MESSAGE}"
+if [ "$?" != "0" ]; then
+    echo "failed to git commit"
+    exit 1
+else
+    echo "git commit succeed (code: ${res})"
+fi
+
+git push
+if [ "$?" != "0" ]; then
+    echo "failed to git push"
+    exit 1
+else
+    echo "git push succeed (code: ${res})"
+fi
+
+
+# # review tags
+# git tag
+
+echo "create new tag '${GIT_TAG}'"
+git tag $GIT_TAG
+
+echo "upload new tag to github"
+git push origin --tags
+if [ "$?" != "0" ]; then
+    echo "failed to git push tags"
+    exit 1
+else
+    echo "git push tags succeed (code: ${res})"
+fi
+
+# review status
+git status
+
+echo "***************************************** success! *****************************************"
+echo
+echo "${COMMIT_MESSAGE}"
+echo 
+
+# return success
+exit 0
+#
