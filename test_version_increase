@@ -29,3 +29,4 @@ cmd="./increase_version_number --development --majorRRR --yes"
 echo "------------------------------------ $cmd ----------------------------------------"
 eval $cmd
 
+
