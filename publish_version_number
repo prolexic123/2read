@@ -1,115 +1,112 @@
 #!/bin/bash
 
-# check arg (should be eiher 'release' or 'test' and nothing else)
-MODE=${1}
-PRODUCTION_MODE="production"
-DEVELOPMENT_MODE="development"
-if [ "${MODE}" != "${PRODUCTION_MODE}" ] && [ "${MODE}" != "${DEVELOPMENT_MODE}" ]; then
-    echo "error: unsupported mode: '${MODE}'. Please use either '${PRODUCTION_MODE}' or '${DEVELOPMENT_MODE}' as the only argument."
-    exit 1
-fi
+## set your GIT secret here:
+#export GIT_ASKPASS=${BASE_DIR}/src/opt/agent/config/secret/git_askpass
 
-echo "mode set to '${MODE}'"
-exit 0
-
-COMMIT_COMMENT=${2}
-
+# ------------------------------------------------------------------------------
 # chdir to install home directory, so we can safely use relative paths 
 # to subfolder (no matter where this script was called from originally).
 CD_TO_FOLDER=`dirname $0`
 cd ${CD_TO_FOLDER}
+#cd $(dirname $0)
 
 # take full path to the current script base directory
 BASE_DIR=`pwd`
 
-# set GIT secret
-export GIT_ASKPASS=${BASE_DIR}/src/opt/agent/config/secret/git_askpass
-
-echo
-echo
-echo "You are about to push new ${MODE} which might affect operation of the whole botnet."
-
-read -p "Are you sure you want to do this? " -n 1
-if [[ ! $REPLY =~ ^[Yy]$ ]]
-then
+# after cd to $BASE_DIR always check if .git folder is present
+GIT_FOLDER="${BASE_DIR}/.git"
+if [ ! -d $GIT_FOLDER ]; then
+    echo
+    echo "Error: can't find folder: ${GIT_FOLDER}. Will exit now."
+    echo
     exit 1
 fi
 
-# cd to the root of the project
+# try to get tag from current git
+ver=`git describe --tags --long 2> /dev/null `
+get_tag_result_code=$?
+
+if [ "${get_tag_result_code}" != "0" ]; then
+    echo
+    echo "Error: failed to get current version number."
+    echo "       Try to call 'get_version_number' to generate very first version number for your project."
+    echo
+    exit 1
+fi
+# ---------------------------------------------------------------------------------
+
+
+
+# ----------------------------------- [ check if git is dirty ] -------------------
+#
+# http://stackoverflow.com/questions/2657935/checking-for-a-dirty-index-or-untracked-files-with-git
+#
+# Changes added to the index but not committed:
+# Returns "*" if the current git branch is dirty.
+function git_dirty {
+  [[ $(git diff --shortstat 2> /dev/null | tail -n1) != "" ]] && echo "*"
+}
+
+# For untracked files:
+# Returns the number of untracked files
+function git_num_untracked_files {
+  expr `git status --porcelain 2>/dev/null| grep "^??" | wc -l` 
+}
+
+GIT_DIRTY=`git_dirty`
+
+# Get number of files added to the index (but uncommitted)
+ADDED_UNCOMMITTED=`expr $(git status --porcelain 2>/dev/null| grep "^M" | wc -l)`
+
+# Get number of files that are uncommitted and not added
+NOT_ADDED_UNCOMMITTED=`expr $(git status --porcelain 2>/dev/null| grep "^ M" | wc -l)`
+
+# Get number of total uncommited files
+TOTAL_UMCOMMITTED=`expr $(git status --porcelain 2>/dev/null| egrep "^(M| M)" | wc -l)`                 # "
+
+#echo "GIT_DIRTY: '${GIT_DIRTY}'"
+if [ "$GIT_DIRTY" == "*" ]; then
+    echo
+    echo "Error: can't proceed, git is dirty:"
+    
+    if [ "${ADDED_UNCOMMITTED}" != "0" ]; then
+	echo "       found added, but uncommited files: '${ADDED_UNCOMMITTED}'"
+    fi
+    if [ "${NOT_ADDED_UNCOMMITTED}" != "0" ]; then
+	echo "       found not added and uncommited files: '${NOT_ADDED_UNCOMMITTED}'"
+    fi
+    if [ "${TOTAL_UMCOMMITTED}" != "0" ]; then
+	echo "       total uncommited files: '${TOTAL_UMCOMMITTED}'"
+    fi
+    echo
+    echo "Please commit and test all your changes prior to publishing new verstion."
+    echo
+    exit 1
+fi
+
+
+# ------------------------------------------------------------------------------
+
+echo
+echo
+echo "You are about to publish new version which might affect operation of the whole botnet."
+
+read -p "Are you sure you want to do this? [y/n] " -n 1; echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo; exit 1
+fi
+
+# cd to the root of the project (this script should be in root project folder)
 cd $(dirname $0)
 
-echo
-echo "***************************************** please review current git status (BEGIN) *****************************************"
-git status
-echo "***************************************** please review current git status (END) *****************************************"
-echo
-
-#TIME_NOW=`date +"%Y-%m-%d_%H-%M-%S"`	# YYYY-MM-DD_HH-MM-SS
-#GIT_TAG=`ruby -e 'puts Time.now.strftime("%Y%m%d_%H%M")'`	# OLD WAY - required ruby
-GIT_TAG=`date +"%Y%m%d_%H%M"`					# NEW WAY - just bash
-GIT_TAG="${MODE}_${GIT_TAG}"
-
-read -p "New tag would be: '${GIT_TAG}'. Review above git status. Continue with the new ${MODE}? " -n 1
-if [[ ! $REPLY =~ ^[Yy]$ ]]
-then
-    exit 1
-fi
-echo ""
-
-git add --all
-res=$?
-if [ "$res" != "0" ]; then
-    echo "failed to git add (code: ${res})"
-    exit 1
-else
-    echo "git add succeed (code: ${res})"
-fi
-
-# commit & push to github all the changes
-COMMIT_MESSAGE="${GIT_TAG} published by user `whoami` on `date`."
-if [ "${COMMIT_COMMENT}" != "" ]; then
-    COMMIT_MESSAGE="${COMMIT_MESSAGE} ${COMMIT_COMMENT}"
-fi
-git commit -m "${COMMIT_MESSAGE}"
-if [ "$?" != "0" ]; then
-    echo "failed to git commit"
-    exit 1
-else
-    echo "git commit succeed (code: ${res})"
-fi
-
-git push
-if [ "$?" != "0" ]; then
-    echo "failed to git push"
-    exit 1
-else
-    echo "git push succeed (code: ${res})"
-fi
-
-
-# # review tags
-# git tag
-
-echo "create new tag '${GIT_TAG}'"
-git tag $GIT_TAG
-
-echo "upload new tag to github"
+echo "upload new tag to the origin server"
 git push origin --tags
 if [ "$?" != "0" ]; then
     echo "failed to git push tags"
     exit 1
-else
-    echo "git push tags succeed (code: ${res})"
 fi
 
-# review status
-git status
-
-echo "***************************************** success! *****************************************"
-echo
-echo "${COMMIT_MESSAGE}"
-echo 
+echo "successfully published version to the origin server"
 
 # return success
 exit 0
-#

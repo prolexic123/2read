@@ -1,31 +1,19 @@
 #!/bin/bash
 
-#
-# Usage examples:
-#
-#	./increase_version_number production
-#	./increase_version_number developmnet
-#	./increase_version_number productiond major
-#
+function usage() {
+echo " Usage examples:"
+echo " "
+echo " 	./increase_version_number --production		- move from 1.3 to 1.4"
+echo " 	./increase_version_number --production		- move from 1.4 to 1.6 <--- note, production are even numbers"
+echo " 	./increase_version_number --development		- move from 1.6 to 1.7 <--- each time 'development' specified we jump to odd 2nd number"
+echo " 	./increase_version_number --production  --major	- move from 1.7 to 2.0 <--- 1st version number is a 'major'"
+echo " 	./increase_version_number --development --major	- move from 2.0 to 3.1 <--- new major 'development' example "
+echo ""
+echo " You can also add --yes argument to automatically answer 'yes' to all questions. Feature also known as a 'script mode'."
+echo ""
+}
 
-# check arg (should be eiher 'production' or 'development')
-MODE=${1}
-PRODUCTION_MODE="production"
-DEVELOPMENT_MODE="development"
-if [ "${MODE}" != "${PRODUCTION_MODE}" ] && [ "${MODE}" != "${DEVELOPMENT_MODE}" ]; then
-    echo "error: unsupported mode: '${MODE}'. Please use either '${PRODUCTION_MODE}' or '${DEVELOPMENT_MODE}' as the only argument."
-    exit 1
-fi
-
-MAJOR_MINOR=$2
-if [ "${MAJOR_MINOR}" == "" ];
-    MAJOR_MINOR="minor"
-fi
-if [ "${MAJOR_MINOR}" != "minor" ] && [ "${MAJOR_MINOR}" != "${major}" ]; then
-    echo "error: 2nd argument should be 'major' or 'minor' or empty (minor by default)"
-    exit 1
-fi
-
+# ------------------------------------------------------------------------------
 # chdir to install home directory, so we can safely use relative paths 
 # to subfolder (no matter where this script was called from originally).
 CD_TO_FOLDER=`dirname $0`
@@ -35,33 +23,171 @@ cd ${CD_TO_FOLDER}
 # take full path to the current script base directory
 BASE_DIR=`pwd`
 
-# get current version and parse it
-current_version_number=`./get_version_number`
-v1=`cat ${current_version_number} | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
-v2=`cat ${current_version_number} | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\2/'`
-v3=`cat ${current_version_number} | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\3/'`
-
-if [ "${MAJOR_MINOR}" == "major" ]; then
-    v1=$((v1+1))
-    v2="0"
-    v3="0"
-fi
-
-next_version_number='.b-0'
-
-echo
-echo "Current version: ${current_version_number}"
-echo "Next version will be: ${next_version_number}"
-
-read -p "Are you sure? [y/n]" -n 1
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+# after cd to $BASE_DIR always check if .git folder is present
+GIT_FOLDER="${BASE_DIR}/.git"
+if [ ! -d $GIT_FOLDER ]; then
+    echo
+    echo "Error: can't find folder: ${GIT_FOLDER}. Will exit now."
+    echo
     exit 1
 fi
+
+# try to get tag from current git
+ver=`git describe --tags --long 2> /dev/null `
+get_tag_result_code=$?
+
+if [ "${get_tag_result_code}" != "0" ]; then
+    echo
+    echo "Error: failed to get current version number."
+    echo "       Try to call 'get_version_number' to generate very first version number for your project."
+    echo
+    exit 1
+fi
+# ------------------------------------------------------------------------------
+
+
+
+# -------------------------- [ Parse cmd-line arguments ] ----------------------
+PRODUCTION_MODE="--production"
+DEVELOPMENT_MODE="--development"
+MODE="undefined"
+
+MAJOR="--major"
+MINOR="--minor"
+MAJOR_MINOR=$MINOR	# by default minor increment
+
+YES="--yes"
+AUTO_YES=false
+
+YYYYMMDD_HHMM=`date +"%Y%m%d_%H%M"`
+WHOAMI=`whoami`
+
+# parse all command line arguments
+for X in "$@"
+do
+    if [ "${X}" == "${YES}" ]; then
+	AUTO_YES=true
+	continue
+    fi
+    if [ "${X}" == "${PRODUCTION_MODE}" ]; then
+	MODE=$PRODUCTION_MODE
+	continue
+    fi
+    if [ "${X}" == "${DEVELOPMENT_MODE}" ]; then
+	MODE=$DEVELOPMENT_MODE
+	continue
+    fi
+    if [ "${X}" == "${MAJOR}" ]; then
+	MAJOR_MINOR=$MAJOR
+	continue
+    fi
+    echo
+    echo "Error: unexpected command line argument: '${X}'"
+    echo
+    exit 1
+done
+# ----------------------------------------------------------------------
+
+
+# check we got required parameter "mode"
+if [ "${MODE}" != "${PRODUCTION_MODE}" ] && [ "${MODE}" != "${DEVELOPMENT_MODE}" ]; then
+    echo
+    echo "Error: unsupported mode: '${MODE}'. Please use either '${PRODUCTION_MODE}' or '${DEVELOPMENT_MODE}' as the argument."
+    echo
+    usage
+    echo
+    exit 1
+fi
+
+# Major or minor increment?
+# By default we have 'minor' increments all the time, unless "major" is set by user
+if [ "${MAJOR_MINOR}" == "" ]; then
+    MAJOR_MINOR="minor"
+fi
+if [ "${MAJOR_MINOR}" != "${MINOR}" ] && [ "${MAJOR_MINOR}" != "${MAJOR}" ]; then
+    echo
+    echo "Error: should be '${MAJOR}' or '${MINOR}' or empty (minor by default), instead have '${MAJOR_MINOR}'."
+    echo
+    exit 1
+fi
+
+# Get current version and parse it to components
+current_version_number=`./get_version_number`
+if [ "${?}" != "0" ]; then
+    echo
+    echo "Error: failed to get current version number (by 'get_version_number' command)."
+    echo
+    exit 1
+fi
+v1=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1/'`
+v2=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\2/'`
+v3=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\3/'`
+
+v1_new=$v1
+v2_new=$v2
+v3_new=$v3
+
+#echo "v1: '${v1}'"
+#echo "v2: '${v2}'"
+#echo "v3: '${v3}'"
+
+# Sanity check: $v1 and $v2 must be numbers
+if [[ $v1 =~ ^[[:digit:]]+$ ]] && [[ $v2 =~ ^[[:digit:]]+$ ]] && [[ $v3 =~ ^[[:digit:]]+$ ]]; then
+    # echo "version component sanity check pass"
+    : # http://stackoverflow.com/questions/12404661/what-is-the-use-case-of-noop-in-bash
+else
+    echo
+    echo "Error: version component sanity check DID NOT PASS! Please fix."
+    echo "       Details: version compontnts:"
+    echo "					v1: '${v1}'"
+    echo "					v2: '${v2}'"
+    echo "					v3: '${v3}'"
+    echo
+fi
+
+
+
+# check if user want major number increased
+if [ "${MAJOR_MINOR}" == "${MAJOR}" ]; then
+    #echo "doing the major increase"
+    v1_new=$((v1+1))
+    if [ "$MODE" == "${PRODUCTION_MODE}" ]; then
+	# procuction: v2 should be even
+        v2_new="0"
+    else
+	# development: v2 should be odd
+        v2_new="1"
+    fi
+    #v3_new="0" # we don't control v3 component - it comes free from git 
+else
+    #echo "doing the minor increase"
+    v1_new=$v1
+    v2_new=$(($v2+1))					# increase
+    v2_rem=$(expr $v2 % 2)				# get reminder v2 % 2
+    if [ "$MODE" == "${PRODUCTION_MODE}" ]; then
+        v2_new=$(($v2_new+$v2_rem))			# if production, then add reminder (if any) to make it next even number
+    else
+	v2_new=$(($v2_new+1-$v2_rem))			# oh!
+    fi
+    # and git handles v3 for us
+fi
+
+curr_version_number=" ${v1}.${v2}"
+next_version_number="${v1_new}.${v2_new}"
+
 echo
+echo "Current version: ${curr_version_number}"
+echo "Next version will be: ${next_version_number}"
+if $AUTO_YES; then
+    :
+else
+    read -p "Are you sure? [y/n] " -n 1; echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+	echo; exit 1
+    fi
+fi
 
-YYYYMMDD_HHMM=`date +"%Y%m%d_%H%M"`					# NEW WAY - just bash
-
-echo $YYYYMMDD_HHMM
+echo git tag -a ${next_version_number} -m "Version tag ${next_version_number} applied on ${YYYYMMDD_HHMM} by user '${WHOAMI}'."
 
 exit 0
 
@@ -72,7 +198,9 @@ if [ "${COMMIT_COMMENT}" != "" ]; then
 fi
 git commit -m "${COMMIT_MESSAGE}"
 if [ "$?" != "0" ]; then
-    echo "failed to git commit"
+    echo
+    echo "Error: failed to git commit"
+    echo
     exit 1
 else
     echo "git commit succeed (code: ${res})"
@@ -80,7 +208,9 @@ fi
 
 git push
 if [ "$?" != "0" ]; then
-    echo "failed to git push"
+    echo
+    echo "Error: failed to git push"
+    echo
     exit 1
 else
     echo "git push succeed (code: ${res})"
@@ -96,7 +226,7 @@ git tag $GIT_TAG
 echo "upload new tag to github"
 git push origin --tags
 if [ "$?" != "0" ]; then
-    echo "failed to git push tags"
+    echo "Error: failed to git push tags"
     exit 1
 else
     echo "git push tags succeed (code: ${res})"
@@ -112,4 +242,3 @@ echo
 
 # return success
 exit 0
-#

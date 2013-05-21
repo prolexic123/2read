@@ -1,0 +1,24 @@
+cmd="./increase_version_number --production --yes"
+echo "------------------------------------ $cmd ----------------------------------------"
+eval $cmd
+
+cmd="./increase_version_number --production --yes"
+echo "------------------------------------ $cmd ----------------------------------------"
+eval $cmd
+
+cmd="./increase_version_number --development --yes"
+echo "------------------------------------ $cmd ----------------------------------------"
+eval $cmd
+
+cmd="./increase_version_number --production --major --yes"
+echo "------------------------------------ $cmd ----------------------------------------"
+eval $cmd
+
+cmd="./increase_version_number --development --major --yes"
+echo "------------------------------------ $cmd ----------------------------------------"
+eval $cmd
+
+cmd="./increase_version_number --development --majorRRR --yes"
+echo "------------------------------------ $cmd ----------------------------------------"
+eval $cmd
+

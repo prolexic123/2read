@@ -1,5 +1,129 @@
 #!/bin/bash
 
-ver=`git describe --tags --long | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
+# chdir to install home directory, so we can safely use relative paths 
+# to subfolder (no matter where this script was called from originally).
+CD_TO_FOLDER=`dirname $0`
+cd ${CD_TO_FOLDER}
+#cd $(dirname $0)
 
-echo $ver
+# take full path to the current script base directory
+BASE_DIR=`pwd`
+
+# after cd to $BASE_DIR always check if .git folder is present
+GIT_FOLDER="${BASE_DIR}/.git"
+if [ ! -d $GIT_FOLDER ]; then
+    echo
+    echo "Error: can't find folder: ${GIT_FOLDER}. Will exit now."
+    echo
+    exit 1
+fi
+
+# try to get tag from current git
+ver=`git describe --tags --long 2> /dev/null `
+get_tag_result_code=$?
+
+# old way was to drop hash part:
+# ver=`git describe --tags --long | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
+
+YYYYMMDD_HHMM=`date +"%Y%m%d_%H%M"`
+WHOAMI=`whoami`
+
+if [ "${get_tag_result_code}" != "0" ]; then
+    # failed to get tag. Possible reason: the tag was never created yet. Ask user if this is the case and offer to create one.
+    echo
+    echo "Can't find version tag on current project."
+    echo "Possible reason: the tag was never created yet."
+
+    read -p "Do you want to create new tag now? [y/n] " -n 1; echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+	echo; exit 1
+    fi
+
+    # user said 'y' to create new tag, lets do it
+    VERY_FIRST_VERSION_NUMBER="0.1"
+    echo -n "Please enter very 1st versoin number for the project or leave blank for default '${VERY_FIRST_VERSION_NUMBER}': "
+    read USER_FIRST_VERSION
+
+    if [ "${USER_FIRST_VERSION}" != "" ]; then
+
+	# validate user input
+	while true; do
+	    
+	    # stop asking user if user entered empty string
+	    if [ "${USER_FIRST_VERSION}" == "" ]; then
+		break
+	    fi
+	    
+	    # should be N.M
+	    if [[ ${USER_FIRST_VERSION} =~ ^[[:digit:]]+\.[[:digit:]]+$ ]]; then
+		# user input validated ok
+		# user input validated
+		VERY_FIRST_VERSION_NUMBER="${USER_FIRST_VERSION}"
+		break
+	    else
+		echo
+		echo "Error: verson number should be a number followed by dot and another number. Example: 1.2"
+		echo
+		echo -n "Please enter very 1st versoin number for the project or leave blank for default '${VERY_FIRST_VERSION_NUMBER}': "
+		read USER_FIRST_VERSION
+	    fi
+	done
+	
+    fi
+
+    git tag -a ${VERY_FIRST_VERSION_NUMBER} -m "Version tag ${VERY_FIRST_VERSION_NUMBER} applied on ${YYYYMMDD_HHMM} by user '${WHOAMI}'."
+    
+    # check result
+    if [ "$?" == "0" ]; then
+	echo
+	echo "Version tag '${VERY_FIRST_VERSION_NUMBER}' successfully created."
+	echo "Don't forget to publish it to the origin server by 'publish_version_number' command."
+	echo
+	exit 0
+    else
+	echo "Error: failed to create FIRST version tag for the project: ${BASE_DIR}"
+	echo
+	exit 1
+    fi
+fi
+
+
+
+# -------------------------- [ Parse cmd-line arguments ] ----------------------
+LONG="--long"
+SHORT="--short"
+SHORT_OR_LONG=$SHORT # by default we show short
+
+# parse all command line arguments
+for X in "$@"
+do
+    if [ "${X}" == "${SHORT}" ]; then
+	SHORT_OR_LONG=$SHORT
+	continue
+    fi
+    if [ "${X}" == "${LONG}" ]; then
+	SHORT_OR_LONG=$LONG
+	continue
+    fi
+    echo
+    echo "Error: unexpected command line argument: '${X}'"
+    echo
+    exit 1
+done
+# ----------------------------------------------------------------------
+
+
+
+
+
+# ------------------------------- return version ---------------------
+if [ "${SHORT_OR_LONG}" == "${SHORT}" ]; then
+    # show short version number (no hash and '-' replsced with '.')
+    # 1.0-13-g47e48a9 => 1.0.13
+    ver_short=`echo "${ver}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1.\2.\3/'`
+    echo $ver_short
+else
+    echo $ver
+fi
+
+exit 0
