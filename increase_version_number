@@ -131,7 +131,7 @@ v3_new=$v3
 #echo "v2: '${v2}'"
 #echo "v3: '${v3}'"
 
-# Sanity check: $v1 and $v2 must be numbers
+# Sanity check: $v1, $v2 and $v3 must be numbers
 if [[ $v1 =~ ^[[:digit:]]+$ ]] && [[ $v2 =~ ^[[:digit:]]+$ ]] && [[ $v3 =~ ^[[:digit:]]+$ ]]; then
     # echo "version component sanity check pass"
     : # http://stackoverflow.com/questions/12404661/what-is-the-use-case-of-noop-in-bash

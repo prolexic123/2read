@@ -41,6 +41,8 @@
 # function long_version_format_is_ok will eiter produce error message and return false on failure or
 # or will just return true on success
 #
+# Note: we use 0 for true and 1 for false (by bash-way of doing things)
+#
 function long_version_format_is_ok {
     ver=$1
     # check if version tag is parsable (must follow convention A.B-C-hash)
@@ -68,10 +70,10 @@ function short_version_format_is_ok {
     # check if version tag is parsable (must follow convention A.B-C-hash)
     if [[ "${ver}" =~ ^([[:digit:]]+)\.([[:digit:]])+\.([[:digit:]]+)$ ]]; then
         : # echo "version tag looks good"
-        return true
+        return 0
     else
         echo "Error: failed to parse current version tag '${ver}'" >&2
-        return false
+        return 1
     fi
 }
 #
@@ -209,9 +211,10 @@ done
 # ----------------------------------------------------------------------
 
 if long_version_format_is_ok $version_long; then
-    echo "long_verstion_format_is_ok return OK"
+    : # echo "long_verstion_format_is_ok return OK"
 else
-    echo "long_verstion_format_is_ok return BAD FORMAT"
+    echo "long_verstion_format_is_ok return BAD FORMAT" >&2
+    exit 1
 fi
 
 # ------------------------------- return version ---------------------
@@ -221,7 +224,7 @@ if [ "${SHORT_OR_LONG}" == "${SHORT}" ]; then
     version_short=`echo "${version_long}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1.\2.\3/'`
     echo $version_short
 else
-    echo $verstion_long
+    echo $version_long
 fi
 
 exit 0
