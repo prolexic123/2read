@@ -1,3 +1,10 @@
+#!/bin/bash
+
+cd `dirname $0`
+source ./get_version_number
+version_format_is_ok "1.5-1-g9097c0e"
+exit 0
+
 cmd="./increase_version_number --production --yes"
 echo "------------------------------------ $cmd ----------------------------------------"
 eval $cmd

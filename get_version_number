@@ -1,5 +1,101 @@
 #!/bin/bash
 
+#
+# 
+#
+# Usage examples:
+#
+# By default it will produce short version number:
+# ./get_version_number 
+# 	1.5.1
+#
+# Or you can explicitly ask for '--short' one:
+# ./get_version_number --short
+#	1.5.1
+#
+# Sometimes (not often) we'll need to have '--long' version number (include git hash-tag)
+# The '--long' version number is unique per unique code change state.
+# Example: 
+#	- two developers took the source code (git clone from repo), say 1.0.0
+#	- both developers did some local changes
+#	- both did local commit (without pushing their changes to the origin server)
+#	  Note! At this point after commit they both have version 1.0.1 even though they
+#	  changed different parts of the project! Thats where long version can be usefull.
+#	  To make sure they have differences they should compare long version numbers.
+#	  And we'll coninue the story:
+#	- both decided to increase version number and publish it
+#	- the one who published changes 1st will succseed, the 2nd will fail and will have
+#	  to 'git pull' changes from origin server (and hopefully merge changes with local
+#	  codebase) and only after that he'll be able to publish his version (the commit number
+#	  will increase after the merge, so it automatically goes up only).
+#
+# ./get_version_number --long
+#	1.5-1-g9097c0e
+#
+
+
+
+
+####################################################################################################
+#
+# function long_version_format_is_ok will eiter produce error message and return false on failure or
+# or will just return true on success
+#
+function long_version_format_is_ok {
+    ver=$1
+    # check if version tag is parsable (must follow convention A.B-C-hash)
+    if [[ "${ver}" =~ ^([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+)-.+$ ]]; then
+        : # echo "version tag looks good"
+        return 0
+    else
+        echo "Error: failed to parse current version tag '${ver}'" >&2
+        return 1
+    fi
+}
+#
+####################################################################################################
+
+
+####################################################################################################
+#
+# function short_version_format_is_ok will eiter produce error message and return false on failure or
+# or will just return true on success
+#
+# Note: we use 0 for true and 1 for false (by bash-way of doing things)
+#
+function short_version_format_is_ok {
+    ver=$1
+    # check if version tag is parsable (must follow convention A.B-C-hash)
+    if [[ "${ver}" =~ ^([[:digit:]]+)\.([[:digit:]])+\.([[:digit:]]+)$ ]]; then
+        : # echo "version tag looks good"
+        return true
+    else
+        echo "Error: failed to parse current version tag '${ver}'" >&2
+        return false
+    fi
+}
+#
+####################################################################################################
+
+
+
+#
+# we exit here if 'get_version_number' was included (not run directly)
+# This is how we include 'get_version_number' from other scripts (to get access to all functions above):
+#	cd `dirname $0`
+#	source ./get_version_number
+#
+#
+started_script_name=`basename $0`
+if [ "${started_script_name}" != "get_version_number" ]; then
+    # this script was not started directly, just exit 0 now
+    exit 0
+fi
+
+
+
+
+
 # chdir to install home directory, so we can safely use relative paths 
 # to subfolder (no matter where this script was called from originally).
 CD_TO_FOLDER=`dirname $0`
@@ -19,11 +115,11 @@ if [ ! -d $GIT_FOLDER ]; then
 fi
 
 # try to get tag from current git
-ver=`git describe --tags --long 2> /dev/null `
+version_long=`git describe --tags --long 2> /dev/null `
 get_tag_result_code=$?
 
 # old way was to drop hash part:
-# ver=`git describe --tags --long | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
+# version_long=`git describe --tags --long | sed -r 's/([[:digit:]]+\.[[:digit:]]+-[[:digit:]]+).*/\1/'`
 
 YYYYMMDD_HHMM=`date +"%Y%m%d_%H%M"`
 WHOAMI=`whoami`
@@ -112,18 +208,20 @@ do
 done
 # ----------------------------------------------------------------------
 
-
-
-
+if long_version_format_is_ok $version_long; then
+    echo "long_verstion_format_is_ok return OK"
+else
+    echo "long_verstion_format_is_ok return BAD FORMAT"
+fi
 
 # ------------------------------- return version ---------------------
 if [ "${SHORT_OR_LONG}" == "${SHORT}" ]; then
     # show short version number (no hash and '-' replsced with '.')
     # 1.0-13-g47e48a9 => 1.0.13
-    ver_short=`echo "${ver}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1.\2.\3/'`
-    echo $ver_short
+    version_short=`echo "${version_long}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1.\2.\3/'`
+    echo $version_short
 else
-    echo $ver
+    echo $verstion_long
 fi
 
 exit 0

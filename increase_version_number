@@ -164,11 +164,11 @@ else
     #echo "doing the minor increase"
     v1_new=$v1
     v2_new=$(($v2+1))					# increase
-    v2_rem=$(expr $v2 % 2)				# get reminder v2 % 2
+    v2_new_reminder=$(expr $v2_new % 2)				# get reminder v2 % 2
     if [ "$MODE" == "${PRODUCTION_MODE}" ]; then
-        v2_new=$(($v2_new+$v2_rem))			# if production, then add reminder (if any) to make it next even number
+        v2_new=$(($v2_new+$v2_new_reminder))			# if production, then add reminder (if any) to make it next even number
     else
-	v2_new=$(($v2_new+1-$v2_rem))			# oh!
+	v2_new=$(($v2_new+1-$v2_new_reminder))			# !
     fi
     # and git handles v3 for us
 fi
