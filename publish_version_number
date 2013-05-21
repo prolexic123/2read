@@ -89,7 +89,7 @@ fi
 
 echo
 echo
-echo "You are about to publish new version which might affect operation of the whole botnet."
+echo "You are about to publish new version to the origin server."
 
 read -p "Are you sure you want to do this? [y/n] " -n 1; echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
