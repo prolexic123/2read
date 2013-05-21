@@ -6,9 +6,11 @@
 # ------------------------------------------------------------------------------
 # chdir to install home directory, so we can safely use relative paths 
 # to subfolder (no matter where this script was called from originally).
-CD_TO_FOLDER=`dirname $0`
-cd ${CD_TO_FOLDER}
+cd `dirname $0`
 #cd $(dirname $0)
+
+# load common functions from 'get_version_number' script
+source ./get_version_number
 
 # take full path to the current script base directory
 BASE_DIR=`pwd`

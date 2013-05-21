@@ -2,31 +2,101 @@
 
 cd `dirname $0`
 source ./get_version_number
-version_format_is_ok "1.5-1-g9097c0e"
+
+
+echo "-------------- [ test 1 of 6 ] -----------------------------------"
+echo "description: parse current version, check it has good format"
+current_version_number=`./get_version_number`
+echo "got current version: ${current_version_number}"
+if short_version_format_is_ok $current_version_number; then
+    echo "getting current version: ${current_version_number} - conform version format convention"
+    echo "-------------- [ test 1 of 6 PASS ] ----------------------------------- "
+
+else
+    echo "getting current version: FAILED got something unparsable: '${current_version_number}'"
+    echo "-------------- [ test 1 of 6 FAILED ] -----------------------------------"
+    exit 1
+fi
+
+
+
+echo
+echo "-------------- [ test 2 of 6 ] -----------------------------------"
+echo "description: increase version should return success"
+cmd="./increase_version_number --production --yes"
+echo "command: $cmd"
+eval $cmd
+cmd_result=$?
+expected_result="0"
+if [ "${cmd_result}" == "${expected_result}" ]; then
+    echo "got expected result (code: ${cmd_result})"
+    echo "-------------- [ test 2 of 6 PASS ] ----------------------------------- "
+
+else
+    echo "got unexpected result (code: ${cmd_result})"
+    echo "-------------- [ test 2 of 6 FAILED ] -----------------------------------"
+    exit 1
+fi
+
+
+
+echo
+echo "-------------- [ test 3 of 6 ] -----------------------------------"
+echo "description: checking current version is actually increased in expected way"
+
+v2_expected=$(($v2+1))					# increase
+v2_expected_reminder=$(expr $v2_expected % 2)		# get reminder
+v2_expected=$(($v2_expected+$v2_expected_reminder))	# for production we add reminder (if any) to make it next even number
+# v2_new=$(($v2_new+1-$v2_new_reminder))		# for development we increase once again and roll back by the value of remider (!)
+
+current_version_number=`./get_version_number`
+
+v1=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1/'`
+v2=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\2/'`
+v3=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\3/'`
+
+expected_version="${v1}.${v2_expected}.${v3}"
+
+echo "expected version: ${expected_version}"
+echo "got current version: ${current_version_number} (v1:${v1} v2:${v2} v3:${v3})"
+
+if [ "${current_version_number}" == "${expected_version}" ]; then
+    echo "match"
+    echo "-------------- [ test 3 of 6 PASS ] ----------------------------------- "
+
+else
+    echo "does not match"
+    echo "-------------- [ test 3 of 6 FAILED ] -----------------------------------"
+    exit 1
+fi
+
+
 exit 0
 
-cmd="./increase_version_number --production --yes"
-echo "------------------------------------ $cmd ----------------------------------------"
-eval $cmd
+
+
+
+
 
 cmd="./increase_version_number --production --yes"
-echo "------------------------------------ $cmd ----------------------------------------"
+echo "running command: $cmd"
 eval $cmd
 
 cmd="./increase_version_number --development --yes"
-echo "------------------------------------ $cmd ----------------------------------------"
+echo "running command: $cmd"
 eval $cmd
 
 cmd="./increase_version_number --production --major --yes"
-echo "------------------------------------ $cmd ----------------------------------------"
+echo "running command: $cmd"
 eval $cmd
 
 cmd="./increase_version_number --development --major --yes"
-echo "------------------------------------ $cmd ----------------------------------------"
+echo "running command: $cmd"
 eval $cmd
 
 cmd="./increase_version_number --development --majorRRR --yes"
-echo "------------------------------------ $cmd ----------------------------------------"
+echo "running command: $cmd"
 eval $cmd
 
-
+# return success
+exit 0

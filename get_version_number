@@ -91,7 +91,7 @@ function short_version_format_is_ok {
 started_script_name=`basename $0`
 if [ "${started_script_name}" != "get_version_number" ]; then
     # this script was not started directly, just exit 0 now
-    exit 0
+    return 0
 fi
 
 
@@ -100,12 +100,14 @@ fi
 
 # chdir to install home directory, so we can safely use relative paths 
 # to subfolder (no matter where this script was called from originally).
-CD_TO_FOLDER=`dirname $0`
-cd ${CD_TO_FOLDER}
+cd `dirname $0`
 #cd $(dirname $0)
 
 # take full path to the current script base directory
 BASE_DIR=`pwd`
+
+# or just:
+# BASE_DIR=$(cd $(dirname "$0"); pwd)
 
 # after cd to $BASE_DIR always check if .git folder is present
 GIT_FOLDER="${BASE_DIR}/.git"
