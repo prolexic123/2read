@@ -64,12 +64,15 @@ NOT_ADDED_UNCOMMITTED=`expr $(git status --porcelain 2>/dev/null| grep "^ M" | w
 # Get number of total uncommited files
 TOTAL_UMCOMMITTED=`expr $(git status --porcelain 2>/dev/null| egrep "^(M| M)" | wc -l)`                 # "
 
+# Get number of files to be pushed to the server
+NEED_TO_PUSH_FILES=`git diff --stat origin/master  | grep "|" | wc -l `
+
 #echo "GIT_DIRTY: '${GIT_DIRTY}'"
-if [ "$GIT_DIRTY" == "*" ]; then
+if [ "$GIT_DIRTY" == "*" ] || [ "${ADDED_UNCOMMITTED}" != "0" ] || [ "${ADDED_UNCOMMITTED}" != "0" ] || [ "${NOT_ADDED_UNCOMMITTED}" != "0" ] || [ "${TOTAL_UMCOMMITTED}" != "0" ] || [ "${NEED_TO_PUSH_FILES}" != "0" ]; then
     echo
     echo "Error: can't proceed, git is dirty:"
-    
-    if [ "${ADDED_UNCOMMITTED}" != "0" ] || [ "${ADDED_UNCOMMITTED}" != "0" ] || [ "${NOT_ADDED_UNCOMMITTED}" != "0" ] || [ "${TOTAL_UMCOMMITTED}" != "0" ] ; then
+
+    if [ "${ADDED_UNCOMMITTED}" != "0" ]; then
 	echo "       found added, but uncommited files: '${ADDED_UNCOMMITTED}'"
     fi
     if [ "${NOT_ADDED_UNCOMMITTED}" != "0" ]; then
@@ -78,8 +81,11 @@ if [ "$GIT_DIRTY" == "*" ]; then
     if [ "${TOTAL_UMCOMMITTED}" != "0" ]; then
 	echo "       total uncommited files: '${TOTAL_UMCOMMITTED}'"
     fi
+    if [ "${NEED_TO_PUSH_FILES}" != "0" ]; then
+	echo "       found files yet to be pushed to the origin: '${NEED_TO_PUSH_FILES}'"
+    fi
     echo
-    echo "Please commit and test all your changes prior to publishing new verstion."
+    echo "Please test -> commit -> push all your changes prior to publishing new verstion."
     echo
     exit 1
 fi
