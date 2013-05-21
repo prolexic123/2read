@@ -69,7 +69,7 @@ if [ "$GIT_DIRTY" == "*" ]; then
     echo
     echo "Error: can't proceed, git is dirty:"
     
-    if [ "${ADDED_UNCOMMITTED}" != "0" ]; then
+    if [ "${ADDED_UNCOMMITTED}" != "0" ] || [ "${ADDED_UNCOMMITTED}" != "0" ] || [ "${NOT_ADDED_UNCOMMITTED}" != "0" ] || [ "${TOTAL_UMCOMMITTED}" != "0" ] ; then
 	echo "       found added, but uncommited files: '${ADDED_UNCOMMITTED}'"
     fi
     if [ "${NOT_ADDED_UNCOMMITTED}" != "0" ]; then
