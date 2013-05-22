@@ -121,9 +121,9 @@ if [ "${?}" != "0" ]; then
     echo
     exit 1
 fi
-v1=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1/'`
-v2=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\2/'`
-v3=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\3/'`
+v1=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]]+)-([[:digit:]]+).*/\1/'`
+v2=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]]+)-([[:digit:]]+).*/\2/'`
+v3=`echo "${current_version_number}" | sed -r 's/([[:digit:]]+)\.([[:digit:]]+)-([[:digit:]]+).*/\3/'`
 
 v1_new=$v1
 v2_new=$v2
@@ -170,7 +170,7 @@ else
     if [ "$MODE" == "${PRODUCTION_MODE}" ]; then
         v2_new=$(($v2_new+$v2_new_reminder))			# if production, then add reminder (if any) to make it next even number
     else
-	v2_new=$(($v2_new+1-$v2_new_reminder))			# !
+	v2_new=$(($v2_new+1-$v2_new_reminder))			# for development we increase once again and roll back by the value of remider (!)
     fi
     # and git handles v3 for us
 fi
@@ -196,6 +196,7 @@ if [ "$?" != "0" ]; then
     exit 1
 fi
 
-echo "New version number successfully applied"
+echo "New version number successfully applied."
+sleep 1
 echo
 exit 0

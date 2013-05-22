@@ -34,7 +34,15 @@
 #
 
 
-
+#
+# The 'get_version_number' script also holds bunch of bash function reusable from other
+# version-number-control scripts, so the logic can be reused in all of them while it is
+# conded only once in one place.
+#
+# This is how we include 'get_version_number' from other scripts (to get access to all functions above):
+#	cd `dirname $0`
+#	source ./get_version_number
+#
 
 ####################################################################################################
 #
@@ -82,7 +90,7 @@ function short_version_format_is_ok {
 
 
 #
-# we exit here if 'get_version_number' was included (not run directly)
+# We exit here if 'get_version_number' was included (not run directly)
 # This is how we include 'get_version_number' from other scripts (to get access to all functions above):
 #	cd `dirname $0`
 #	source ./get_version_number
@@ -223,7 +231,7 @@ fi
 if [ "${SHORT_OR_LONG}" == "${SHORT}" ]; then
     # show short version number (no hash and '-' replsced with '.')
     # 1.0-13-g47e48a9 => 1.0.13
-    version_short=`echo "${version_long}" | sed -r 's/([[:digit:]]+)\.([[:digit:]])+-([[:digit:]]+).*/\1.\2.\3/'`
+    version_short=`echo "${version_long}" | sed -r 's/([[:digit:]]+)\.([[:digit:]]+)-([[:digit:]]+).*/\1.\2.\3/'`
     echo $version_short
 else
     echo $version_long
